@@ -1,8 +1,8 @@
 """Google Cloud Text-to-Speech, one sentence at a time, with paced pauses.
 
-Each sentence is synthesized separately so we know exactly how long the speech is.
-The pauses between sentences are then sized so the episode averages TARGET_WPM
-(and never more than MAX_WPM) — slow, with breathing room after every sentence.
+Each sentence is synthesized separately, its built-in silence trimmed, and fixed
+pauses (config.PAUSE_*) inserted, so the voice keeps its natural speed and the
+pauses are exactly as long as configured.
 """
 from __future__ import annotations
 
@@ -54,6 +54,16 @@ def _silence(seconds: float) -> bytes:
     return b"\x00\x00" * int(seconds * config.SAMPLE_RATE)
 
 
+def _trim(pcm: bytes, threshold: int = 300, keep: float = 0.05) -> bytes:
+    """Cut leading/trailing near-silence from 16-bit mono PCM, keeping a 50 ms cushion."""
+    samples = memoryview(pcm).cast("h")
+    n = len(samples)
+    start = next((i for i in range(n) if abs(samples[i]) > threshold), 0)
+    end = next((i for i in range(n - 1, -1, -1) if abs(samples[i]) > threshold), n - 1)
+    pad = int(keep * config.SAMPLE_RATE)
+    return bytes(pcm[max(0, start - pad) * 2: min(n, end + 1 + pad) * 2])
+
+
 def render(script: dict, out_mp3: Path, rate: float = config.SPEAKING_RATE) -> dict:
     """Synthesize the whole script; return timing stats."""
     # Flatten into (sentence, gap_type) where gap_type is what follows the sentence.
@@ -72,27 +82,23 @@ def render(script: dict, out_mp3: Path, rate: float = config.SPEAKING_RATE) -> d
     with ThreadPoolExecutor(max_workers=6) as pool:
         clips = list(pool.map(lambda u: synth(u[0], rate=rate), units))
 
+    # Google pads each clip with its own silence; trim it so the pauses below are exactly what you hear.
+    clips = [_trim(c) for c in clips]
     words = sum(len(re.findall(r"\w+(?:['’]\w+)?", u[0])) for u in units)
     speech_sec = sum(len(c) for c in clips) / BYTES_PER_SEC
     speech_wpm = words / (speech_sec / 60)
 
-    # Gaps are weighted: sentence 1x, paragraph 2x, segment 3.5x.
-    weights = {"sentence": 1.0, "paragraph": 2.0, "segment": 3.5, "end": 0.0}
-    total_weight = sum(weights[g] for _, g in units)
-    target_total = words / config.TARGET_WPM * 60
-    target_total = min(max(target_total, config.MIN_MINUTES * 60 + 30), config.MAX_MINUTES * 60 - 30)
-    base_gap = (target_total - speech_sec) / total_weight if total_weight else 0
-    base_gap = min(max(base_gap, 0.45), 1.8)  # keep it natural: never rushed, never awkward
-
+    pauses = {"sentence": config.PAUSE_SENTENCE, "paragraph": config.PAUSE_PARAGRAPH,
+              "segment": config.PAUSE_SEGMENT, "end": 0.0}
     pcm = bytearray(_silence(0.8))
     for clip, (_, gap) in zip(clips, units):
         pcm += clip
-        pcm += _silence(base_gap * weights[gap])
+        pcm += _silence(pauses[gap])
     pcm += _silence(1.5)
     total_sec = len(pcm) / BYTES_PER_SEC
     stats = {
         "words": words, "sentences": len(units), "speech_seconds": round(speech_sec, 1),
-        "speech_wpm": round(speech_wpm, 1), "gap_seconds": round(base_gap, 2),
+        "speech_wpm": round(speech_wpm, 1), "sentence_pause": config.PAUSE_SENTENCE,
         "duration_seconds": round(total_sec, 1), "average_wpm": round(words / (total_sec / 60), 1),
         "voice": config.VOICE_NAME, "speaking_rate": rate,
     }
@@ -111,13 +117,7 @@ def render(script: dict, out_mp3: Path, rate: float = config.SPEAKING_RATE) -> d
 
 
 def render_paced(script: dict, out_mp3: Path) -> dict:
-    """Render, slowing the voice itself if pauses alone can't meet the WPM ceiling."""
-    rate = config.SPEAKING_RATE
-    for _ in range(3):
-        stats = render(script, out_mp3, rate)
-        print("Audio:", stats)
-        if stats["average_wpm"] <= config.MAX_WPM:
-            return stats
-        rate = round(rate * config.TARGET_WPM / stats["average_wpm"], 2)
-        rate = max(rate, 0.7)
+    """Render at the fixed voice speed and fixed pauses (no automatic slowing)."""
+    stats = render(script, out_mp3, config.SPEAKING_RATE)
+    print("Audio:", stats)
     return stats

@@ -4,9 +4,9 @@ A daily French-learning podcast built from Radio-Canada Sports news. The focus i
 
 Every day at 5 PM Toronto time, a GitHub Action does this:
 
-1. Collects the day's stories from `ici.radio-canada.ca/sports` (the RSS feed, the main page and the Olympic sports page).
+1. Collects stories published in the last 24 hours that no earlier episode has used, from `ici.radio-canada.ca/sports` (the RSS feed, the main page and the Olympic sports page).
 2. Asks Claude (`claude-opus-5-5`) to write a ~1,350-word script in B1-level French. The host, "Martin", introduces himself every day, and each episode ends with a "Les mots du jour" vocabulary segment.
-3. Reads it aloud with Google Cloud Text-to-Speech, using the same voice every day (`VOICE_NAME` in `podcast/config.py`). It synthesizes one sentence at a time, then sizes the pauses between sentences so the episode averages about 92 words per minute. It never goes above 100 wpm, and the target length is 12–18 minutes.
+3. Reads it aloud with Google Cloud Text-to-Speech, using the same voice every day (`VOICE_NAME` in `podcast/config.py`). It synthesizes one sentence at a time and adds short fixed pauses (0.9 s after a sentence, 1.4 s after a paragraph, 2.3 s between stories). These are set by `PAUSE_*` in `podcast/config.py`.
 4. Uploads the MP3 as a GitHub Release, then updates `docs/feed.xml` and a transcript page that GitHub Pages serves.
 
 **Subscribe:** https://jmsmorris.github.io/francais-sports-podcast/feed.xml

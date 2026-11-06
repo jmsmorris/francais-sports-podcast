@@ -74,7 +74,7 @@ def main() -> int:
     mp3 = out_dir / f"sport-francais-{today}.mp3"
     stats = tts.render_paced(script, mp3)
     minutes = stats["duration_seconds"] / 60
-    if stats["average_wpm"] > config.MAX_WPM or not (config.MIN_MINUTES <= minutes <= config.MAX_MINUTES):
+    if not (config.MIN_MINUTES <= minutes <= config.MAX_MINUTES):
         print(f"WARNING: outside targets ({minutes:.1f} min, {stats['average_wpm']} wpm)")
 
     title = f"{date_fr(now).capitalize()} — {script['episode_title']}"

@@ -44,8 +44,11 @@ MAX_WORDS = 1550
 VOICE_NAME = "fr-CA-Chirp3-HD-Achird"  # Google describes Achird as "friendly"
 VOICE_LANGUAGE = "fr-CA"
 SPEAKING_RATE = 0.85       # Google speakingRate for each sentence (1.0 = normal)
-TARGET_WPM = 92            # average words/min including pauses
-MAX_WPM = 100              # hard ceiling (your requirement)
-MIN_MINUTES, MAX_MINUTES = 12.0, 18.0
+# Pauses after each sentence / paragraph / story (seconds). Voice speed stays natural;
+# with these pauses episodes average roughly 110-120 words per minute.
+PAUSE_SENTENCE = 0.9
+PAUSE_PARAGRAPH = 1.4
+PAUSE_SEGMENT = 2.3
+MIN_MINUTES, MAX_MINUTES = 10.0, 18.0
 SAMPLE_RATE = 24000
 MP3_BITRATE = "64k"        # mono speech; ~7 MB per 15 min
