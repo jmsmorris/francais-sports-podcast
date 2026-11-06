@@ -21,10 +21,10 @@
     <podcast:locked>yes</podcast:locked>
     <item>
       <title>Vendredi 6 novembre 2026 — Le capitaine est de retour, et la relève arrive</title>
-      <guid isPermaLink="false">jmsmorris/francais-sports-podcast/ep-2026-11-06</guid>
+      <guid isPermaLink="false">jmsmorris/francais-sports-podcast/ep-2026-11-06-v2</guid>
       <pubDate>Fri, 06 Nov 2026 11:34:08 -0500</pubDate>
-      <enclosure url="https://github.com/jmsmorris/francais-sports-podcast/releases/download/ep-2026-11-06/sport-francais-2026-11-06.mp3" length="7160492" type="audio/mpeg"/>
-      <itunes:duration>895</itunes:duration>
+      <enclosure url="https://github.com/jmsmorris/francais-sports-podcast/releases/download/ep-2026-11-06/sport-francais-2026-11-06.mp3" length="5165804" type="audio/mpeg"/>
+      <itunes:duration>645</itunes:duration>
       <itunes:episodeType>full</itunes:episodeType>
       <itunes:explicit>false</itunes:explicit>
       <link>https://jmsmorris.github.io/francais-sports-podcast/transcripts/2026-11-06.html</link>
