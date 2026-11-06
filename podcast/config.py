@@ -41,9 +41,9 @@ MAX_WORDS = 1550
 
 # ---- Voice ----
 # Same voice every day = same "person". Change only if you want a new narrator.
-VOICE_NAME = "fr-CA-Neural2-D"
+VOICE_NAME = "fr-CA-Chirp3-HD-Achird"  # Google describes Achird as "friendly"
 VOICE_LANGUAGE = "fr-CA"
-SPEAKING_RATE = 0.9        # Google speakingRate for each sentence (1.0 = normal)
+SPEAKING_RATE = 0.85       # Google speakingRate for each sentence (1.0 = normal)
 TARGET_WPM = 92            # average words/min including pauses
 MAX_WPM = 100              # hard ceiling (your requirement)
 MIN_MINUTES, MAX_MINUTES = 12.0, 18.0

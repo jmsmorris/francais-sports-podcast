@@ -82,7 +82,7 @@ def render(script: dict, out_mp3: Path, rate: float = config.SPEAKING_RATE) -> d
     target_total = words / config.TARGET_WPM * 60
     target_total = min(max(target_total, config.MIN_MINUTES * 60 + 30), config.MAX_MINUTES * 60 - 30)
     base_gap = (target_total - speech_sec) / total_weight if total_weight else 0
-    base_gap = min(max(base_gap, 0.45), 1.6)  # keep it natural: never rushed, never awkward
+    base_gap = min(max(base_gap, 0.45), 1.8)  # keep it natural: never rushed, never awkward
 
     pcm = bytearray(_silence(0.8))
     for clip, (_, gap) in zip(clips, units):
