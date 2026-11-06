@@ -117,9 +117,26 @@ def _call(client: anthropic.Anthropic, user_text: str) -> dict:
     return json.loads("".join(b.text for b in msg.content if b.type == "text"))
 
 
-def write_script(articles: list[dict], date_fr: str) -> dict:
+def _previous_block(previous: dict | None) -> str:
+    if not previous:
+        return ""
+    lines = []
+    for seg in previous["segments"]:
+        if seg["kind"] == "story":
+            lines.append(f"- {seg['heading']} : {' '.join(seg['paragraphs'])[:400]}")
+    return (
+        "\n\nÉpisode précédent (déjà entendu par l'auditeur) :\n" + "\n".join(lines) +
+        "\n\nSi un article d'aujourd'hui poursuit un de ces sujets, c'est permis : présente-le "
+        "comme une suite (par exemple « Hier, on vous a parlé de… Aujourd'hui, il y a du nouveau. »), "
+        "rappelle le contexte en une ou deux phrases seulement, et concentre-toi sur ce qui est nouveau. "
+        "Ne répète pas des informations déjà données sans nouveauté."
+    )
+
+
+def write_script(articles: list[dict], date_fr: str, previous: dict | None = None) -> dict:
     client = anthropic.Anthropic()
-    base = f"Date de l'épisode : {date_fr}.\n\nArticles du jour :\n\n{_articles_block(articles)}"
+    base = (f"Date de l'épisode : {date_fr}.{_previous_block(previous)}"
+            f"\n\nArticles du jour :\n\n{_articles_block(articles)}")
     script = _call(client, base)
     for _ in range(2):
         n = word_count(script)

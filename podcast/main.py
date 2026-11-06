@@ -100,7 +100,13 @@ def main() -> int:
 
     from . import script as script_mod, tts  # imported late so --scrape-only needs no keys
 
-    script = script_mod.write_script(articles, date_fr(now))
+    previous = None
+    if episodes:  # last episode's script, so follow-up stories can build on it
+        last = max(episodes, key=lambda e: e["published"])
+        path = config.SCRIPTS / f"{last.get('id', last['date'])}.json"
+        if path.exists():
+            previous = json.loads(path.read_text())
+    script = script_mod.write_script(articles, date_fr(now), previous)
     out_dir = config.ROOT / "out"
     out_dir.mkdir(exist_ok=True)
     (out_dir / f"{ep_id}.json").write_text(json.dumps(script, ensure_ascii=False, indent=2))
