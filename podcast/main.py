@@ -35,12 +35,41 @@ def upload(mp3: Path, tag: str, title: str) -> str:
     return f"https://github.com/{config.REPO}/releases/download/{tag}/{mp3.name}"
 
 
+def rerender(date: str) -> int:
+    """New audio for an existing episode, same script and same article list."""
+    from . import tts
+
+    episodes = feed.load_episodes()
+    ep = next((e for e in episodes if e["date"] == date), None)
+    path = config.SCRIPTS / f"{date}.json"
+    if not ep or not path.exists():
+        print(f"No episode or saved script for {date}")
+        return 1
+    script = json.loads(path.read_text())
+    out_dir = config.ROOT / "out"
+    out_dir.mkdir(exist_ok=True)
+    mp3 = out_dir / f"sport-francais-{date}.mp3"
+    stats = tts.render_paced(script, mp3)
+    ep.update(audio_url=upload(mp3, f"ep-{date}", ep["title"]), bytes=mp3.stat().st_size,
+              duration_seconds=stats["duration_seconds"], stats=stats,
+              guid=ep["guid"] + "-v2" if not ep["guid"].endswith("-v2") else ep["guid"])
+    feed.write_transcript_page(ep, script)
+    feed.save_episodes(episodes)
+    feed.build_feed(episodes)
+    print(f"Re-recorded {date}: {stats['duration_seconds'] / 60:.1f} min, {stats['average_wpm']} wpm")
+    return 0
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--force", action="store_true")
     ap.add_argument("--scrape-only", action="store_true")
     ap.add_argument("--no-upload", action="store_true")
+    ap.add_argument("--rerender", metavar="YYYY-MM-DD",
+                    help="re-record an existing episode's audio from its saved script")
     args = ap.parse_args()
+    if args.rerender:
+        return rerender(args.rerender)
 
     now = datetime.now(ZoneInfo(config.TIMEZONE))
     today = now.date().isoformat()
@@ -70,6 +99,8 @@ def main() -> int:
     out_dir = config.ROOT / "out"
     out_dir.mkdir(exist_ok=True)
     (out_dir / f"{today}.json").write_text(json.dumps(script, ensure_ascii=False, indent=2))
+    config.SCRIPTS.mkdir(exist_ok=True)  # kept in the repo so audio can be re-recorded later
+    (config.SCRIPTS / f"{today}.json").write_text(json.dumps(script, ensure_ascii=False, indent=2))
 
     mp3 = out_dir / f"sport-francais-{today}.mp3"
     stats = tts.render_paced(script, mp3)

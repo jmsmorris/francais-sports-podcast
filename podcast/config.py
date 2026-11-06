@@ -6,6 +6,7 @@ DOCS = ROOT / "docs"  # served by GitHub Pages
 EPISODES_JSON = DOCS / "episodes.json"
 FEED_XML = DOCS / "feed.xml"
 TRANSCRIPTS = DOCS / "transcripts"
+SCRIPTS = ROOT / "scripts"  # saved episode scripts (JSON)
 
 TIMEZONE = "America/Toronto"
 PUBLISH_HOUR = 17  # 5 PM local time
