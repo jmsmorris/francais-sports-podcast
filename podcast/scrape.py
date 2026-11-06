@@ -151,35 +151,37 @@ def fetch_article(info: dict) -> dict | None:
 
 
 def collect(already_used: set[str], now: datetime | None = None) -> list[dict]:
+    """Stories published in the last LOOKBACK_HOURS that no earlier episode used."""
     now = now or datetime.now(timezone.utc)
-    cands = candidate_urls()
-    print(f"{len(cands)} candidate links")
+    cutoff = now - timedelta(hours=config.LOOKBACK_HOURS)
+    cands = [c for c in candidate_urls().values() if c["url"] not in already_used]
+    fresh_cands = []
+    for c in cands:  # RSS items carry a date: skip old ones without downloading them
+        if c.get("rss_date"):
+            try:
+                d = datetime.strptime(c["rss_date"].strip(), "%a, %d %b %Y %H:%M:%S %Z").replace(tzinfo=timezone.utc)
+                if d < cutoff:
+                    continue
+            except ValueError:
+                pass
+        fresh_cands.append(c)
+    print(f"{len(fresh_cands)} unused candidate links")
     articles = []
-    for info in list(cands.values())[: config.MAX_ARTICLES_TO_FETCH]:
-        if info["url"] in already_used:
-            continue
+    for info in fresh_cands[: config.MAX_ARTICLES_TO_FETCH]:
         try:
             a = fetch_article(info)
         except Exception as e:  # noqa: BLE001
             print(f"skip {info['url']}: {e}")
             continue
-        if a and len(a["body"]) >= (80 if a["kind"] == "video" else 150):
-            articles.append(a)
         time.sleep(0.4)  # be polite
+        if not a or len(a["body"]) < (80 if a["kind"] == "video" else 150):
+            continue
+        if datetime.fromisoformat(a["published"]) < cutoff:
+            continue
+        articles.append(a)
 
-    def recent(hours: int) -> list[dict]:
-        cutoff = now - timedelta(hours=hours)
-        return [a for a in articles if datetime.fromisoformat(a["published"]) >= cutoff]
-
-    picked = recent(config.LOOKBACK_HOURS)
-    focus = [a for a in picked if a["topic"] in config.FOCUS_SPORTS]
-    for hours in (60, 96):  # widen the window on slow news days
-        if len(focus) >= 6:
-            break
-        picked = recent(hours)
-        focus = [a for a in picked if a["topic"] in config.FOCUS_SPORTS]
     order = {t: i for i, t in enumerate(config.FOCUS_SPORTS)}
-    picked.sort(key=lambda a: a["published"], reverse=True)
-    picked.sort(key=lambda a: order.get(a["topic"], 9))
-    print("Topics:", {t: sum(a["topic"] == t for a in picked) for t in {a["topic"] for a in picked}})
-    return picked
+    articles.sort(key=lambda a: a["published"], reverse=True)
+    articles.sort(key=lambda a: order.get(a["topic"], 9))
+    print("Topics:", {t: sum(a["topic"] == t for a in articles) for t in {a["topic"] for a in articles}})
+    return articles

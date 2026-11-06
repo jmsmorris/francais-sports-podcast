@@ -30,7 +30,7 @@ SOURCE_PAGES = [
 ]
 SOURCE_RSS = ["https://ici.radio-canada.ca/info/rss/sports/en-continu"]
 FOCUS_SPORTS = ["hockey", "baseball", "olympiques"]
-LOOKBACK_HOURS = 36       # first pass; widened if too few stories
+LOOKBACK_HOURS = 24       # only stories newer than this; never widened
 MAX_ARTICLES_TO_FETCH = 70
 
 # ---- Script ----

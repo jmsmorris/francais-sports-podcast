@@ -54,7 +54,7 @@ def main() -> int:
             print("Today's episode already exists.")
             return 0
 
-    used = {u for e in episodes for u in e.get("source_urls", [])}
+    used = {u for e in episodes for u in e.get("source_urls", []) + e.get("considered_urls", [])}
     articles = scrape.collect(used)
     if args.scrape_only:
         for a in articles:
@@ -93,6 +93,8 @@ def main() -> int:
         "duration_seconds": stats["duration_seconds"],
         "stats": stats,
         "source_urls": sorted({u for s in script["segments"] for u in s.get("source_urls", [])}),
+        # Every article handed to Claude counts as used, so nothing can come back tomorrow.
+        "considered_urls": sorted(a["url"] for a in articles),
         "notes_html": feed.notes_html(script),
     }
     episodes = [e for e in episodes if e["date"] != today] + [ep]
