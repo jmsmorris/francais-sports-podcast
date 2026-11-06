@@ -49,11 +49,11 @@ def write_transcript_page(ep: dict, script: dict) -> None:
 <audio controls preload="none" src="{html.escape(ep['audio_url'])}"></audio>
 {notes_html(script)}
 <p><a href="../index.html">← Tous les épisodes</a></p></body></html>"""
-    (config.TRANSCRIPTS / f"{ep['date']}.html").write_text(page)
+    (config.TRANSCRIPTS / f"{ep.get('id', ep['date'])}.html").write_text(page)
 
 
 def build_feed(eps: list[dict]) -> None:
-    eps = sorted(eps, key=lambda e: e["date"], reverse=True)
+    eps = sorted(eps, key=lambda e: e["published"], reverse=True)
     cover = f"{config.SITE_URL}/cover.png"
     items = []
     for e in eps:
@@ -66,8 +66,8 @@ def build_feed(eps: list[dict]) -> None:
       <itunes:duration>{int(e['duration_seconds'])}</itunes:duration>
       <itunes:episodeType>full</itunes:episodeType>
       <itunes:explicit>false</itunes:explicit>
-      <link>{config.SITE_URL}/transcripts/{e['date']}.html</link>
-      <podcast:transcript url="{config.SITE_URL}/transcripts/{e['date']}.html" type="text/html" language="fr"/>
+      <link>{config.SITE_URL}/transcripts/{e.get('id', e['date'])}.html</link>
+      <podcast:transcript url="{config.SITE_URL}/transcripts/{e.get('id', e['date'])}.html" type="text/html" language="fr"/>
       <description><![CDATA[{e['notes_html']}]]></description>
       <content:encoded><![CDATA[{e['notes_html']}]]></content:encoded>
     </item>""")
@@ -100,7 +100,7 @@ def build_feed(eps: list[dict]) -> None:
 """
     config.FEED_XML.write_text(xml)
 
-    rows = "".join(f'<li><a href="transcripts/{e["date"]}.html">{html.escape(e["title"])}</a> '
+    rows = "".join(f'<li><a href="transcripts/{e.get("id", e["date"])}.html">{html.escape(e["title"])}</a> '
                    f'<small>({round(e["duration_seconds"] / 60)} min)</small></li>' for e in eps)
     (config.DOCS / "index.html").write_text(f"""<!doctype html><html lang="fr"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1"><title>{html.escape(config.SHOW_TITLE)}</title>

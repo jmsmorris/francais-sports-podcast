@@ -1,7 +1,7 @@
 """Daily run: scrape -> script -> audio -> GitHub Release -> feed.
 
-python -m podcast.main            # scheduled run (only acts after 5 PM Toronto time, once per day)
-python -m podcast.main --force    # make today's episode now
+python -m podcast.main            # scheduled run (acts once per day, after 5 PM Toronto time)
+python -m podcast.main --force    # make an extra episode now (doesn't block the 5 PM one)
 python -m podcast.main --scrape-only
 """
 from __future__ import annotations
@@ -35,28 +35,28 @@ def upload(mp3: Path, tag: str, title: str) -> str:
     return f"https://github.com/{config.REPO}/releases/download/{tag}/{mp3.name}"
 
 
-def rerender(date: str) -> int:
+def rerender(ep_id: str) -> int:
     """New audio for an existing episode, same script and same article list."""
     from . import tts
 
     episodes = feed.load_episodes()
-    ep = next((e for e in episodes if e["date"] == date), None)
-    path = config.SCRIPTS / f"{date}.json"
+    ep = next((e for e in episodes if e.get("id", e["date"]) == ep_id), None)
+    path = config.SCRIPTS / f"{ep_id}.json"
     if not ep or not path.exists():
-        print(f"No episode or saved script for {date}")
+        print(f"No episode or saved script for {ep_id}")
         return 1
     script = json.loads(path.read_text())
     out_dir = config.ROOT / "out"
     out_dir.mkdir(exist_ok=True)
-    mp3 = out_dir / f"sport-francais-{date}.mp3"
+    mp3 = out_dir / f"sport-francais-{ep_id}.mp3"
     stats = tts.render_paced(script, mp3)
-    ep.update(audio_url=upload(mp3, f"ep-{date}", ep["title"]), bytes=mp3.stat().st_size,
+    ep.update(audio_url=upload(mp3, f"ep-{ep_id}", ep["title"]), bytes=mp3.stat().st_size,
               duration_seconds=stats["duration_seconds"], stats=stats,
               guid=ep["guid"] + "-v2" if not ep["guid"].endswith("-v2") else ep["guid"])
     feed.write_transcript_page(ep, script)
     feed.save_episodes(episodes)
     feed.build_feed(episodes)
-    print(f"Re-recorded {date}: {stats['duration_seconds'] / 60:.1f} min, {stats['average_wpm']} wpm")
+    print(f"Re-recorded {ep_id}: {stats['duration_seconds'] / 60:.1f} min, {stats['average_wpm']} wpm")
     return 0
 
 
@@ -66,7 +66,7 @@ def main() -> int:
     ap.add_argument("--scrape-only", action="store_true")
     ap.add_argument("--no-upload", action="store_true")
     ap.add_argument("--rerender", metavar="YYYY-MM-DD",
-                    help="re-record an existing episode's audio from its saved script")
+                    help="re-record an existing episode's audio from its saved script (episode id)")
     args = ap.parse_args()
     if args.rerender:
         return rerender(args.rerender)
@@ -79,9 +79,14 @@ def main() -> int:
         if now.hour < config.PUBLISH_HOUR:
             print(f"It is {now:%H:%M} in Toronto; waiting for {config.PUBLISH_HOUR}:00.")
             return 0
-        if any(e["date"] == today for e in episodes):
-            print("Today's episode already exists.")
+        # Only an episode made at/after 5 PM counts; a manual test earlier in the day doesn't.
+        if any(e["date"] == today and datetime.fromisoformat(e["published"]).hour >= config.PUBLISH_HOUR
+               for e in episodes):
+            print("Today's 5 PM episode already exists.")
             return 0
+
+    taken = {e.get("id", e["date"]) for e in episodes}
+    ep_id = today if today not in taken else f"{today}-{now:%H%M}"
 
     used = {u for e in episodes for u in e.get("source_urls", []) + e.get("considered_urls", [])}
     articles = scrape.collect(used)
@@ -98,11 +103,11 @@ def main() -> int:
     script = script_mod.write_script(articles, date_fr(now))
     out_dir = config.ROOT / "out"
     out_dir.mkdir(exist_ok=True)
-    (out_dir / f"{today}.json").write_text(json.dumps(script, ensure_ascii=False, indent=2))
+    (out_dir / f"{ep_id}.json").write_text(json.dumps(script, ensure_ascii=False, indent=2))
     config.SCRIPTS.mkdir(exist_ok=True)  # kept in the repo so audio can be re-recorded later
-    (config.SCRIPTS / f"{today}.json").write_text(json.dumps(script, ensure_ascii=False, indent=2))
+    (config.SCRIPTS / f"{ep_id}.json").write_text(json.dumps(script, ensure_ascii=False, indent=2))
 
-    mp3 = out_dir / f"sport-francais-{today}.mp3"
+    mp3 = out_dir / f"sport-francais-{ep_id}.mp3"
     stats = tts.render_paced(script, mp3)
     minutes = stats["duration_seconds"] / 60
     if not (config.MIN_MINUTES <= minutes <= config.MAX_MINUTES):
@@ -113,11 +118,12 @@ def main() -> int:
         print(f"Saved {mp3} ({minutes:.1f} min, {stats['average_wpm']} wpm). Not uploaded.")
         return 0
 
-    audio_url = upload(mp3, f"ep-{today}", title)
+    audio_url = upload(mp3, f"ep-{ep_id}", title)
     ep = {
+        "id": ep_id,
         "date": today,
         "title": title,
-        "guid": f"{config.REPO}/ep-{today}",
+        "guid": f"{config.REPO}/ep-{ep_id}",
         "published": now.isoformat(),
         "audio_url": audio_url,
         "bytes": mp3.stat().st_size,
@@ -128,7 +134,7 @@ def main() -> int:
         "considered_urls": sorted(a["url"] for a in articles),
         "notes_html": feed.notes_html(script),
     }
-    episodes = [e for e in episodes if e["date"] != today] + [ep]
+    episodes = episodes + [ep]
     feed.write_transcript_page(ep, script)
     feed.save_episodes(episodes)
     feed.build_feed(episodes)

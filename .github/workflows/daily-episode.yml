@@ -9,11 +9,11 @@ on:
   workflow_dispatch:
     inputs:
       force:
-        description: "Make today's episode now (replaces it if it exists)"
+        description: "Make an extra episode now (the 5 PM episode still runs)"
         type: boolean
         default: true
       rerender:
-        description: "Only re-record the audio for this date (YYYY-MM-DD) from its saved script"
+        description: "Only re-record the audio for this episode id (e.g. 2026-11-06) from its saved script"
         type: string
         default: ""
 
