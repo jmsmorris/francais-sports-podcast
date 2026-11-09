@@ -2,7 +2,7 @@
 
 A daily French-learning podcast built from Radio-Canada Sports news. The focus is hockey, baseball and the Olympics.
 
-Every day at 5 PM Toronto time, a GitHub Action does this:
+Every night at 11 PM Toronto time (a recap of the day, for listening the next morning), a GitHub Action does this:
 
 1. Collects stories published in the last 24 hours that no earlier episode has used, from `ici.radio-canada.ca/sports` (the RSS feed, the main page and the Olympic sports page).
 2. Asks Claude (`claude-opus-5-5`) to write a ~1,350-word script in B1-level French. The host, "Martin", introduces himself every day, and each episode ends with a "Les mots du jour" vocabulary segment.

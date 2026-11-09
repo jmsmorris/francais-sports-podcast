@@ -1,7 +1,7 @@
 """Daily run: scrape -> script -> audio -> GitHub Release -> feed.
 
-python -m podcast.main            # scheduled run (acts once per day, after 5 PM Toronto time)
-python -m podcast.main --force    # make an extra episode now (doesn't block the 5 PM one)
+python -m podcast.main            # scheduled run (acts once per evening, 11 PM–3 AM Toronto time)
+python -m podcast.main --force    # make an extra episode now (doesn't block the 11 PM one)
 python -m podcast.main --scrape-only
 """
 from __future__ import annotations
@@ -10,7 +10,7 @@ import argparse
 import json
 import subprocess
 import sys
-from datetime import datetime
+from datetime import datetime, time, timedelta
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
@@ -21,7 +21,7 @@ MONTHS = ["janvier", "février", "mars", "avril", "mai", "juin", "juillet", "ao�
 DAYS = ["lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi", "dimanche"]
 
 
-def date_fr(d: datetime) -> str:
+def date_fr(d) -> str:
     day = "1er" if d.day == 1 else str(d.day)
     return f"{DAYS[d.weekday()]} {day} {MONTHS[d.month - 1]} {d.year}"
 
@@ -72,17 +72,19 @@ def main() -> int:
         return rerender(args.rerender)
 
     now = datetime.now(ZoneInfo(config.TIMEZONE))
-    today = now.date().isoformat()
+    late = now.hour < config.LATE_CUTOFF_HOUR  # just past midnight: still last night's run
+    day = (now - timedelta(days=1)).date() if late else now.date()  # the day the episode covers
+    today = day.isoformat()
     episodes = feed.load_episodes()
 
     if not args.force and not args.scrape_only:
-        if now.hour < config.PUBLISH_HOUR:
+        if not late and now.hour < config.PUBLISH_HOUR:
             print(f"It is {now:%H:%M} in Toronto; waiting for {config.PUBLISH_HOUR}:00.")
             return 0
-        # Only an episode made at/after 5 PM counts; a manual test earlier in the day doesn't.
-        if any(e["date"] == today and datetime.fromisoformat(e["published"]).hour >= config.PUBLISH_HOUR
-               for e in episodes):
-            print("Today's 5 PM episode already exists.")
+        # Only an episode made at/after 11 PM counts; a manual run earlier in the day doesn't.
+        start = datetime.combine(day, time(config.PUBLISH_HOUR), now.tzinfo)
+        if any(e["date"] == today and datetime.fromisoformat(e["published"]) >= start for e in episodes):
+            print("Tonight's episode already exists.")
             return 0
 
     taken = {e.get("id", e["date"]) for e in episodes}
@@ -106,7 +108,7 @@ def main() -> int:
         path = config.SCRIPTS / f"{last.get('id', last['date'])}.json"
         if path.exists():
             previous = json.loads(path.read_text())
-    script = script_mod.write_script(articles, date_fr(now), previous)
+    script = script_mod.write_script(articles, date_fr(day), previous)
     out_dir = config.ROOT / "out"
     out_dir.mkdir(exist_ok=True)
     (out_dir / f"{ep_id}.json").write_text(json.dumps(script, ensure_ascii=False, indent=2))
@@ -119,7 +121,7 @@ def main() -> int:
     if not (config.MIN_MINUTES <= minutes <= config.MAX_MINUTES):
         print(f"WARNING: outside targets ({minutes:.1f} min, {stats['average_wpm']} wpm)")
 
-    title = f"{date_fr(now).capitalize()} — {script['episode_title']}"
+    title = f"{date_fr(day).capitalize()} — {script['episode_title']}"
     if args.no_upload:
         print(f"Saved {mp3} ({minutes:.1f} min, {stats['average_wpm']} wpm). Not uploaded.")
         return 0

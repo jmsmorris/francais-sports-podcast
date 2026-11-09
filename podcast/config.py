@@ -9,13 +9,14 @@ TRANSCRIPTS = DOCS / "transcripts"
 SCRIPTS = ROOT / "scripts"  # saved episode scripts (JSON)
 
 TIMEZONE = "America/Toronto"
-PUBLISH_HOUR = 17  # 5 PM local time
+PUBLISH_HOUR = 23  # 11 PM local: a recap of the day, for listening the next morning
+LATE_CUTOFF_HOUR = 3  # runs before 3 AM still belong to the previous evening (GitHub cron can be late)
 
 # ---- Show ----
 SHOW_TITLE = "Le sport en français facile"
 SHOW_AUTHOR = "Le sport en français facile"
 SHOW_DESCRIPTION = (
-    "Chaque jour à 17 h : les nouvelles du hockey, du baseball et des sports olympiques, "
+    "Chaque matin : les nouvelles de la veille du hockey, du baseball et des sports olympiques, "
     "racontées en français simple (niveau B1), lentement, pour apprendre le français. "
     "Résumés basés sur les reportages de Radio-Canada Sports."
 )

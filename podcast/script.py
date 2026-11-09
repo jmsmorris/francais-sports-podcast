@@ -44,8 +44,14 @@ SYSTEM = f"""Tu es l'auteur d'un balado quotidien pour des anglophones qui appre
 L'animateur s'appelle {config.HOST_NAME}. Il est chaleureux, calme, encourageant, un peu drôle, \
 et il parle comme un ami qui aime le sport. Il se présente toujours de la même façon au début.
 
-Ta tâche : écrire le texte complet de l'épisode du jour, à lire à voix haute, à partir des articles \
+Ta tâche : écrire le texte complet de l'épisode, à lire à voix haute, à partir des articles \
 de Radio-Canada Sports fournis.
+
+Moment d'écoute : l'épisode est enregistré tard le soir et l'auditeur l'écoute le lendemain matin. \
+C'est le résumé de la journée sportive qui vient de se terminer (la date de l'épisode). \
+Parle donc de cette journée au passé, comme d'« hier » ou « hier soir », ou nomme le jour \
+(« lundi soir »). N'utilise pas « aujourd'hui » ou « ce soir » pour ces événements. \
+Pour un match prévu le jour de l'écoute, dis « aujourd'hui » ou « ce soir ».
 
 Niveau de langue : B1 (CECR).
 - Phrases courtes (en moyenne 10 à 15 mots). Une idée par phrase.
@@ -70,11 +76,11 @@ qui n'est pas dans les articles. Tu peux expliquer le contexte général d'un sp
 - Pour les chroniques d'opinion, dis clairement que c'est l'avis du chroniqueur.
 
 Structure :
-- "intro" : salutation, présentation de {config.HOST_NAME}, la date du jour, aperçu des sujets.
+- "intro" : salutation du matin (« Bonjour ! »), présentation de {config.HOST_NAME}, la journée résumée (« voici ce qui s'est passé hier, » suivi du jour et de la date de l'épisode), aperçu des sujets.
 - plusieurs "story" : chaque nouvelle en 2 à 4 paragraphes.
 - "vocabulary" : « Les mots du jour » — 5 ou 6 mots ou expressions entendus dans l'épisode, \
 chacun expliqué en français simple avec un exemple.
-- "outro" : courte récapitulation et au revoir chaleureux, « à demain ».
+- "outro" : courte récapitulation et au revoir chaleureux, « à demain matin ».
 
 Longueur : environ {config.TARGET_WORDS} mots au total pour tous les paragraphes \
 (minimum {config.MIN_WORDS}, maximum {config.MAX_WORDS}). C'est important : l'épisode doit durer \
@@ -126,8 +132,8 @@ def _previous_block(previous: dict | None) -> str:
             lines.append(f"- {seg['heading']} : {' '.join(seg['paragraphs'])[:400]}")
     return (
         "\n\nÉpisode précédent (déjà entendu par l'auditeur) :\n" + "\n".join(lines) +
-        "\n\nSi un article d'aujourd'hui poursuit un de ces sujets, c'est permis : présente-le "
-        "comme une suite (par exemple « Hier, on vous a parlé de… Aujourd'hui, il y a du nouveau. »), "
+        "\n\nSi un des nouveaux articles poursuit un de ces sujets, c'est permis : présente-le "
+        "comme une suite (par exemple « Dans l'épisode d'hier, on vous a parlé de… Il y a du nouveau. »), "
         "rappelle le contexte en une ou deux phrases seulement, et concentre-toi sur ce qui est nouveau. "
         "Ne répète pas des informations déjà données sans nouveauté."
     )
@@ -135,7 +141,7 @@ def _previous_block(previous: dict | None) -> str:
 
 def write_script(articles: list[dict], date_fr: str, previous: dict | None = None) -> dict:
     client = anthropic.Anthropic()
-    base = (f"Date de l'épisode : {date_fr}.{_previous_block(previous)}"
+    base = (f"Date de l'épisode (la journée résumée) : {date_fr}.{_previous_block(previous)}"
             f"\n\nArticles du jour :\n\n{_articles_block(articles)}")
     script = _call(client, base)
     for _ in range(2):
