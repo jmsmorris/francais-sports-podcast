@@ -13,7 +13,16 @@ import requests
 from . import config
 
 UA = "Mozilla/5.0 (compatible; french-sports-podcast/1.0; personal language-learning feed)"
-ARTICLE_RE = re.compile(r"https://ici\.radio-canada\.ca/(?:sports|nouvelle)/\d{6,}/[a-z0-9\-]+")
+BASE = "https://ici.radio-canada.ca"
+# Old links: /sports/2299013/slug, /nouvelle/... ; since 2026-11-10: /article/sports/2299013/slug (often relative)
+ARTICLE_RE = re.compile(r"(?:https://ici\.radio-canada\.ca)?/(?:article/(?:sports|info)|sports|nouvelle)/\d{6,}/[a-z0-9\-]+")
+ID_RE = re.compile(r"/(\d{6,})/")
+
+
+def story_id(url: str) -> str:
+    """Radio-Canada's numeric story id, the same under old and new URL formats."""
+    m = ID_RE.search(url)
+    return m.group(1) if m else url
 
 # Keyword fallback when the page has no "Sport" metadata.
 TOPIC_KEYWORDS = {
@@ -72,7 +81,9 @@ def candidate_urls() -> dict[str, dict]:
     for page in config.SOURCE_PAGES:
         try:
             for link in set(ARTICLE_RE.findall(_get(page))):
-                found.setdefault(link, {"url": link})
+                link = link if link.startswith("http") else BASE + link
+                if not any(story_id(u) == story_id(link) for u in found):
+                    found[link] = {"url": link}
         except Exception as e:  # noqa: BLE001
             print(f"Page failed {page}: {e}")
     return found
@@ -154,7 +165,8 @@ def collect(already_used: set[str], now: datetime | None = None) -> list[dict]:
     """Stories published in the LOOKBACK_HOURS before `now` that no earlier episode used."""
     now = now or datetime.now(timezone.utc)
     cutoff = now - timedelta(hours=config.LOOKBACK_HOURS)
-    cands = [c for c in candidate_urls().values() if c["url"] not in already_used]
+    used_ids = {story_id(u) for u in already_used}
+    cands = [c for c in candidate_urls().values() if story_id(c["url"]) not in used_ids]
     fresh_cands = []
     for c in cands:  # RSS items carry a date: skip old ones without downloading them
         if c.get("rss_date"):
