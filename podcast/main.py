@@ -72,26 +72,28 @@ def main() -> int:
         return rerender(args.rerender)
 
     now = datetime.now(ZoneInfo(config.TIMEZONE))
-    late = now.hour < config.LATE_CUTOFF_HOUR  # just past midnight: still last night's run
-    day = (now - timedelta(days=1)).date() if late else now.date()  # the day the episode covers
+    # The episode covers the day of the most recent 11 PM. GitHub often runs scheduled
+    # jobs hours late (or skips them), so any later run catches up on a missed night.
+    day = now.date() if now.hour >= config.PUBLISH_HOUR else (now - timedelta(days=1)).date()
     today = day.isoformat()
+    # News window ends at midnight after that day, so a morning catch-up still covers that day only.
+    window_end = min(now, datetime.combine(day + timedelta(days=1), time(0), now.tzinfo))
     episodes = feed.load_episodes()
 
     if not args.force and not args.scrape_only:
-        if not late and now.hour < config.PUBLISH_HOUR:
-            print(f"It is {now:%H:%M} in Toronto; waiting for {config.PUBLISH_HOUR}:00.")
-            return 0
         # Only an episode made at/after 11 PM counts; a manual run earlier in the day doesn't.
         start = datetime.combine(day, time(config.PUBLISH_HOUR), now.tzinfo)
         if any(e["date"] == today and datetime.fromisoformat(e["published"]) >= start for e in episodes):
-            print("Tonight's episode already exists.")
+            print(f"It is {now:%H:%M} in Toronto; the episode for {today} already exists.")
             return 0
+        if now.date() != day:
+            print(f"Catching up: the {today} episode was missed (it is {now:%a %H:%M} in Toronto).")
 
     taken = {e.get("id", e["date"]) for e in episodes}
     ep_id = today if today not in taken else f"{today}-{now:%H%M}"
 
     used = {u for e in episodes for u in e.get("source_urls", []) + e.get("considered_urls", [])}
-    articles = scrape.collect(used)
+    articles = scrape.collect(used, window_end)
     if args.scrape_only:
         for a in articles:
             print(f"[{a['topic']:10}] {a['published'][:16]} {a['title']}  ({len(a['body'])} chars)")

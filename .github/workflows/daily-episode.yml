@@ -3,10 +3,12 @@ name: Daily episode
 on:
   schedule:
     # 11 PM Toronto = 03:00 UTC in summer (EDT) and 04:00 UTC in winter (EST).
-    # GitHub sometimes delays or drops scheduled runs, so there are backup slots
-    # every 30 min until ~1:30-2:30 AM local. The script acts only from 11 PM to 3 AM
-    # and once per evening; the extra runs exit in seconds.
+    # GitHub often delays or skips scheduled runs (it skipped every night slot on
+    # 2026-11-09), so there are backup slots every 30 min overnight and hourly through
+    # the next day. A run after a missed 11 PM makes that night's episode late; once
+    # it exists the other runs exit in about a minute.
     - cron: "5,35 3-6 * * *"
+    - cron: "20 7-23 * * *"
   workflow_dispatch:
     inputs:
       force:
@@ -61,4 +63,4 @@ jobs:
           git config user.name "podcast-bot"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add docs scripts
-          git diff --cached --quiet || (git commit -m "Episode $(TZ=America/Toronto date -d '-3 hours' +%F)" && git push)
+          git diff --cached --quiet || (git commit -m "Episode $(python -c "import json;print(max(json.load(open('docs/episodes.json')),key=lambda e:e['published']).get('id','update'))")" && git push)

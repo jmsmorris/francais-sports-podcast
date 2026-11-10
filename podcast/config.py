@@ -10,7 +10,6 @@ SCRIPTS = ROOT / "scripts"  # saved episode scripts (JSON)
 
 TIMEZONE = "America/Toronto"
 PUBLISH_HOUR = 23  # 11 PM local: a recap of the day, for listening the next morning
-LATE_CUTOFF_HOUR = 3  # runs before 3 AM still belong to the previous evening (GitHub cron can be late)
 
 # ---- Show ----
 SHOW_TITLE = "Le sport en français facile"

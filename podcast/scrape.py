@@ -151,7 +151,7 @@ def fetch_article(info: dict) -> dict | None:
 
 
 def collect(already_used: set[str], now: datetime | None = None) -> list[dict]:
-    """Stories published in the last LOOKBACK_HOURS that no earlier episode used."""
+    """Stories published in the LOOKBACK_HOURS before `now` that no earlier episode used."""
     now = now or datetime.now(timezone.utc)
     cutoff = now - timedelta(hours=config.LOOKBACK_HOURS)
     cands = [c for c in candidate_urls().values() if c["url"] not in already_used]
@@ -160,7 +160,7 @@ def collect(already_used: set[str], now: datetime | None = None) -> list[dict]:
         if c.get("rss_date"):
             try:
                 d = datetime.strptime(c["rss_date"].strip(), "%a, %d %b %Y %H:%M:%S %Z").replace(tzinfo=timezone.utc)
-                if d < cutoff:
+                if d < cutoff or d > now:
                     continue
             except ValueError:
                 pass
@@ -176,7 +176,7 @@ def collect(already_used: set[str], now: datetime | None = None) -> list[dict]:
         time.sleep(0.4)  # be polite
         if not a or len(a["body"]) < (80 if a["kind"] == "video" else 150):
             continue
-        if datetime.fromisoformat(a["published"]) < cutoff:
+        if not cutoff <= datetime.fromisoformat(a["published"]) <= now:
             continue
         articles.append(a)
 
