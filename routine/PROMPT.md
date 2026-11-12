@@ -14,7 +14,7 @@ The routine message says **Mode: LIVE** or **Mode: TEST**.
 ## Steps
 
 1. Install and prepare:
-   `pip install -q requests` then `python -m podcast.main --prepare` (TEST: add `--test`).
+   `python -m pip install -q requests` then `python -m podcast.main --prepare` (TEST: add `--test`).
 2. Read the last lines of the output:
    - `NOTHING_TO_DO`: reply with that line and stop. Change nothing.
    - `NOT_ENOUGH_STORIES` or any error: run `sleep 60` and try step 1 once more. If it fails again,
@@ -39,7 +39,8 @@ The routine message says **Mode: LIVE** or **Mode: TEST**.
    git commit -m "Script <id>"
    ```
    LIVE: `git pull --rebase origin main && git push origin HEAD:main`
-   TEST: `git push -f origin HEAD:refs/heads/claude/test-script`
-   If a push is rejected, pull --rebase and retry, up to 3 times.
+   TEST: `git push origin HEAD:refs/heads/claude/test-script` (a plain push, never `--force`)
+   Never force-push. If a push is rejected, pull --rebase and retry, up to 3 times.
+   Leave no untracked files behind except the git-ignored `out/` folder.
 6. Reply in 3 lines: the episode id, the episode title, and the word count and number of stories.
    For TEST, also say that nothing was published.

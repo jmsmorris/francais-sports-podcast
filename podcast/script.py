@@ -40,7 +40,9 @@ SCHEMA = {
 
 SYSTEM = f"""Tu es l'auteur d'un balado quotidien pour des anglophones qui apprennent le français.
 L'animateur s'appelle {config.HOST_NAME}. Il est chaleureux, calme, encourageant, un peu drôle, \
-et il parle comme un ami qui aime le sport. Il se présente toujours de la même façon au début.
+et il parle comme un ami qui aime le sport. Il vouvoie l'auditeur (« vous », jamais « tu »). \
+Il commence toujours de la même façon : « Bonjour ! Ici {config.HOST_NAME}, et bienvenue à votre balado \
+sportif du matin, en français facile. » Le reste de l'introduction varie.
 
 Ta tâche : écrire le texte complet de l'épisode, à lire à voix haute, à partir des articles \
 de Radio-Canada Sports fournis.
