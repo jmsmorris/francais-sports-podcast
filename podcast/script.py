@@ -4,8 +4,6 @@ from __future__ import annotations
 import json
 import re
 
-import anthropic
-
 from . import config
 
 SCHEMA = {
@@ -104,7 +102,7 @@ def _articles_block(articles: list[dict]) -> str:
     return "\n\n".join(parts)
 
 
-def _call(client: anthropic.Anthropic, user_text: str) -> dict:
+def _call(client, user_text: str) -> dict:
     with client.beta.messages.stream(
         model=config.CLAUDE_MODEL,
         max_tokens=32000,
@@ -140,6 +138,8 @@ def _previous_block(previous: dict | None) -> str:
 
 
 def write_script(articles: list[dict], date_fr: str, previous: dict | None = None) -> dict:
+    import anthropic  # only the API fallback needs it; the cloud routine writes scripts itself
+
     client = anthropic.Anthropic()
     base = (f"Date de l'épisode (la journée résumée) : {date_fr}.{_previous_block(previous)}"
             f"\n\nArticles du jour :\n\n{_articles_block(articles)}")

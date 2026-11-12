@@ -7,6 +7,7 @@ EPISODES_JSON = DOCS / "episodes.json"
 FEED_XML = DOCS / "feed.xml"
 TRANSCRIPTS = DOCS / "transcripts"
 SCRIPTS = ROOT / "scripts"  # saved episode scripts (JSON)
+PENDING = ROOT / "pending"  # prepared episodes waiting for audio (articles + date)
 
 TIMEZONE = "America/Toronto"
 PUBLISH_HOUR = 23  # 11 PM local: a recap of the day, for listening the next morning

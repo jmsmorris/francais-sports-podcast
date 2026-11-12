@@ -1,20 +1,23 @@
 name: Daily episode
 
+# The Claude cloud routine ("Le sport en français facile - script") scrapes Radio-Canada at
+# 11 PM Toronto time, writes the French script, and pushes scripts/<id>.json. That push
+# starts this workflow, which only turns the script into audio and updates the feed.
+# No Anthropic API key is needed for that; only the Google TTS key.
 on:
-  schedule:
-    # 11 PM Toronto = 03:00 UTC in summer (EDT) and 04:00 UTC in winter (EST).
-    # GitHub often delays or skips scheduled runs (it skipped every night slot on
-    # 2026-11-09), so there are backup slots every 30 min overnight and hourly through
-    # the next day. A run after a missed 11 PM makes that night's episode late; once
-    # it exists the other runs exit in about a minute.
-    - cron: "5,35 3-6 * * *"
-    - cron: "20 7-23 * * *"
+  push:
+    branches: [main]
+    paths: ["scripts/*.json"]
   workflow_dispatch:
     inputs:
-      force:
-        description: "Make an extra episode now (the 11 PM episode still runs)"
+      legacy:
+        description: "Fallback: scrape and write the script with the Anthropic API instead (needs ANTHROPIC_API_KEY)"
         type: boolean
-        default: true
+        default: false
+      force:
+        description: "With legacy: make an extra episode now"
+        type: boolean
+        default: false
       rerender:
         description: "Only re-record the audio for this episode id (e.g. 2026-11-06) from its saved script"
         type: string
@@ -39,18 +42,23 @@ jobs:
           cache: pip
       - run: sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg
       - run: pip install -r requirements.txt
-      - name: Make episode
+      - name: Make episode audio and feed
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           GOOGLE_TTS_API_KEY: ${{ secrets.GOOGLE_TTS_API_KEY }}
           GH_TOKEN: ${{ github.token }}
+          RERENDER: ${{ inputs.rerender }}
+          LEGACY: ${{ inputs.legacy }}
+          FORCE: ${{ inputs.force }}
         run: |
-          if [ -n "${{ inputs.rerender }}" ]; then
-            python -m podcast.main --rerender "${{ inputs.rerender }}"
+          if [ -n "$RERENDER" ]; then
+            python -m podcast.main --rerender "$RERENDER"
+          elif [ "$LEGACY" = "true" ]; then
+            if [ "$FORCE" = "true" ]; then python -m podcast.main --force; else python -m podcast.main; fi
           else
-            python -m podcast.main ${{ (github.event_name == 'workflow_dispatch' && inputs.force) && '--force' || '' }}
+            python -m podcast.main --render
           fi
-      - name: Keep the script for reference
+      - name: Keep the audio script for reference
         if: always()
         uses: actions/upload-artifact@v4
         with:
@@ -62,5 +70,9 @@ jobs:
         run: |
           git config user.name "podcast-bot"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add docs scripts
-          git diff --cached --quiet || (git commit -m "Episode $(python -c "import json;print(max(json.load(open('docs/episodes.json')),key=lambda e:e['published']).get('id','update'))")" && git push)
+          git add -A docs scripts pending
+          git diff --cached --quiet || {
+            git commit -m "Episode $(python -c "import json;print(max(json.load(open('docs/episodes.json')),key=lambda e:e['published']).get('id','update'))")"
+            git pull --rebase -q
+            git push
+          }
