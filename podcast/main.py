@@ -121,7 +121,7 @@ def last_script(episodes: list[dict]) -> dict | None:
 
 # ---------- half 1: cloud routine ----------
 
-def prepare(force: bool) -> int:
+def prepare(force: bool, test: bool = False) -> int:
     from . import script as script_mod
 
     now = datetime.now(ZoneInfo(config.TIMEZONE))
@@ -129,13 +129,16 @@ def prepare(force: bool) -> int:
     today = day.isoformat()
     episodes = feed.load_episodes()
     pending = load_pending(now)
-    if not force and already_done(day, start, episodes, pending):
+    if test:  # dry run for checking the routine: last 24 h, ignores what was used, id "test"
+        day, window_end, pending = now.date(), now, []
+    elif not force and already_done(day, start, episodes, pending):
         print(f"NOTHING_TO_DO: the episode for {today} already exists or is being prepared.")
         return 0
     if now.date() != day:
         print(f"Catching up: the {today} episode was missed (it is {now:%a %H:%M} in Toronto).")
-    ep_id = new_ep_id(today, now, episodes, pending)
-    articles = scrape.collect(used_urls(episodes, pending), window_end)
+    today = day.isoformat()
+    ep_id = "test" if test else new_ep_id(today, now, episodes, pending)
+    articles = scrape.collect(set() if test else used_urls(episodes, pending), window_end)
     if len(articles) < 3:
         print(f"NOT_ENOUGH_STORIES: found {len(articles)} usable stories (need 3). "
               "Radio-Canada may be unreachable or quiet; nothing was prepared.")
@@ -275,6 +278,7 @@ def main() -> int:
     ap.add_argument("--scrape-only", action="store_true")
     ap.add_argument("--no-upload", action="store_true")
     ap.add_argument("--prepare", action="store_true", help="cloud routine: scrape and write the brief")
+    ap.add_argument("--test", action="store_true", help="with --prepare: dry run that ignores used stories")
     ap.add_argument("--check", metavar="ID", help="validate scripts/ID.json")
     ap.add_argument("--render", action="store_true", help="voice and publish every prepared script")
     ap.add_argument("--rerender", metavar="ID", help="re-record an existing episode's audio")
@@ -282,7 +286,7 @@ def main() -> int:
     if args.rerender:
         return rerender(args.rerender)
     if args.prepare:
-        return prepare(args.force)
+        return prepare(args.force, args.test)
     if args.check:
         return check(args.check)
     if args.render:
