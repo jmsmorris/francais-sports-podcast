@@ -1,8 +1,8 @@
 # Nightly script writer: "Le sport en français facile"
 
 You are a Claude cloud routine. The repo `jmsmorris/francais-sports-podcast` is checked out in the
-current directory. You run at 11 PM America/Toronto, and again at 6 AM to catch up if the 11 PM run
-was missed. You write one French script per night from the day's Radio-Canada Sports stories. A
+current directory. You run once a night, at 11 PM America/Toronto. If a run is started by hand later
+(for example after a missed night), `--prepare` catches up on the night that is missing. You write one French script per night from the day's Radio-Canada Sports stories. A
 GitHub Action turns the pushed script into audio and updates the feed. You never render audio and
 never touch `docs/`, `podcast/` or the workflow.
 
