@@ -11,7 +11,7 @@ on:
   schedule:
     # Safety net: if the routine's push didn't start this workflow, voice any waiting script.
     # With nothing waiting, this exits in about a minute without calling Google.
-    - cron: "20 4,5,6,11 * * *"
+    - cron: "20 6 * * *"
   workflow_dispatch:
     inputs:
       legacy:
