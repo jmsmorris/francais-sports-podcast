@@ -43,10 +43,10 @@ def clean_for_speech(text: str) -> str:
 
 
 def synth(text: str, voice: str = config.VOICE_NAME, rate: float = config.SPEAKING_RATE,
-          clean: bool = True) -> bytes:
+          clean: bool = True, extra_input: dict | None = None) -> bytes:
     """Return raw 16-bit mono PCM for one sentence."""
     body = {
-        "input": {"text": clean_for_speech(text) if clean else text},
+        "input": {"text": clean_for_speech(text) if clean else text, **(extra_input or {})},
         "voice": {"languageCode": config.VOICE_LANGUAGE, "name": voice},
         "audioConfig": {"audioEncoding": "LINEAR16", "sampleRateHertz": config.SAMPLE_RATE,
                         "speakingRate": rate},
