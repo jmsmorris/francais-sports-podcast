@@ -15,8 +15,11 @@ jobs:
       - run: pip install -r requirements.txt
       - env:
           GOOGLE_TTS_API_KEY: ${{ secrets.GOOGLE_TTS_API_KEY }}
+          SCRIPT_FILE: scripts/2026-11-19.json
         run: python -m podcast.apostrophe_test
       - uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: apostrophe-samples
           path: samples/
+          if-no-files-found: ignore

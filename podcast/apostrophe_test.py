@@ -3,8 +3,11 @@
 Renders the same sentences several ways, saves MP3s to samples/, and measures pauses *inside* each
 clip (a gap in the middle of a clip is a stumble; the sentence edges are trimmed first).
 """
+import json
+import os
 import re
 import subprocess
+from concurrent.futures import ThreadPoolExecutor
 import wave
 from pathlib import Path
 
@@ -64,6 +67,21 @@ def inner_gaps(pcm: bytes, win_ms=10, quiet=250, min_ms=70) -> list[int]:
             cur = 0
     return runs
 
+
+SCRIPT_FILE = os.environ.get("SCRIPT_FILE")
+if SCRIPT_FILE:  # real-data check: sentences with elisions from an actual script, compared across variants
+    script = json.loads(Path(SCRIPT_FILE).read_text())
+    allsent = [x for g in script["segments"] for p in g["paragraphs"] for x in tts.split_sentences(p)]
+    SENTENCES = [x for x in allsent if "'" in x][:70]
+    VARIANTS = {k: VARIANTS[k] for k in ("a_straight_rate085", "c_modifier_rate085", "i_modifier_rate090", "h_modifier_rate100")}
+    print(f"real script: {len(SENTENCES)} sentences with elisions")
+    for name, (fn, rate, factor) in VARIANTS.items():
+        with ThreadPoolExecutor(max_workers=6) as pool:
+            clips = list(pool.map(lambda x: tts.synth(fn(x), rate=rate, clean=False), SENTENCES))
+        per = [len(inner_gaps(c)) for c in clips]
+        wpm = sum(len(x.split()) for x in SENTENCES) / (sum(len(tts._trim(c, keep=0)) for c in clips) / tts.BYTES_PER_SEC / 60)
+        print(f"{name:26s} mid-sentence pauses: {sum(per):3d} in {sum(1 for n in per if n):2d}/{len(per)} sentences   speech {wpm:5.1f} wpm")
+    raise SystemExit
 
 out = Path("samples")
 out.mkdir(exist_ok=True)
