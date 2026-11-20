@@ -17,6 +17,7 @@ SENTENCES = [
     "J'ai vu que c'est important d'abord.",
     "Elle s'est blessée, mais ce n'est pas grave.",
     "C'est l'équipe de l'Alberta qui l'a emporté.",
+    "Le Canadien a gagné hier soir contre Toronto.",  # control: no apostrophes, expect no pauses
 ]
 
 
@@ -24,17 +25,18 @@ def curly(s): return s.replace("'", "’")
 def modifier(s): return s.replace("'", "ʼ")
 def spaced(s): return re.sub(r"(?<=\b[lcjdnmstLCJDNMST])'|(?<=\bqu)'", "' ", s)
 def same(s): return s
+def joiner(s): return s.replace("'", "\u02bc\u2060")
 
 
 # name: (text transform, speaking rate, slow-down factor applied after synthesis)
 VARIANTS = {
     "a_straight_rate085": (same, 0.85, None),
-    "b_curly_rate085": (curly, 0.85, None),
     "c_modifier_rate085": (modifier, 0.85, None),
-    "d_spaced_rate085": (spaced, 0.85, None),
     "e_straight_rate100": (same, 1.0, None),
-    "f_straight_rate100_slowed": (same, 1.0, 0.85),
-    "g_straight_rate095_slowed": (same, 0.95, 0.9),
+    "h_modifier_rate100": (modifier, 1.0, None),
+    "i_modifier_rate090": (modifier, 0.9, None),
+    "j_modifier_joiner_rate085": (joiner, 0.85, None),
+    "k_modifier_rate100_slowed": (modifier, 1.0, 0.85),
 }
 
 
@@ -68,17 +70,18 @@ out.mkdir(exist_ok=True)
 print(f"voice={config.VOICE_NAME}")
 for name, (fn, rate, factor) in VARIANTS.items():
     pcm = bytearray()
-    total_gaps, total_ms, n_gaps = 0, 0.0, 0
+    total_gaps, total_ms, n_gaps, detail = 0, 0.0, 0, []
     for sent in SENTENCES:
         clip = tts.synth(fn(sent), rate=rate, clean=False)
         if factor:
             clip = slow(clip, factor)
         gaps = inner_gaps(clip)
+        detail.append(len(gaps))
         n_gaps += len(gaps)
         total_gaps += sum(gaps)
         total_ms += len(tts._trim(clip, keep=0)) / tts.BYTES_PER_SEC * 1000
         pcm += tts._trim(clip) + tts._silence(0.9)
-    print(f"{name:28s} mid-sentence pauses: {n_gaps:2d} ({total_gaps:4d} ms)   speech {total_ms / 1000:5.1f} s")
+    print(f"{name:28s} mid-sentence pauses: {n_gaps:2d} ({total_gaps:4d} ms)   speech {total_ms / 1000:5.1f} s  per sentence {detail}")
     wav = out / f"{name}.wav"
     with wave.open(str(wav), "wb") as w:
         w.setnchannels(1); w.setsampwidth(2); w.setframerate(config.SAMPLE_RATE); w.writeframes(bytes(pcm))
