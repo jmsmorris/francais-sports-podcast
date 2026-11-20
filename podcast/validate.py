@@ -69,6 +69,9 @@ def validate(script: dict, allowed_urls: set[str] | None = None) -> tuple[list[s
     text = "\n".join(p for s in segs for p in s["paragraphs"])
     if re.search(r"[()\[\]*#•_]|^\s*[-–]\s", text, re.M):
         errors.append("The spoken text must have no parentheses, brackets, markdown or bullet characters.")
+    if re.search(r"&(#\d+|#x[0-9a-fA-F]+|[a-zA-Z]+);", text):
+        errors.append("The spoken text contains HTML entities such as &#x27; or &amp;. "
+                      "Write real characters (l'équipe, not l&#x27;équipe).")
     if re.search(r"https?://", text):
         errors.append("No URLs in the spoken text.")
     digits = re.findall(r"\d+", text)

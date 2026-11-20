@@ -7,6 +7,7 @@ pauses are exactly as long as configured.
 from __future__ import annotations
 
 import base64
+import html
 import io
 import os
 import re
@@ -29,10 +30,22 @@ def split_sentences(paragraph: str) -> list[str]:
     return [p.strip() for p in parts if p.strip()]
 
 
+def clean_for_speech(text: str) -> str:
+    """HTML entities (&#x27;), typographic apostrophes and stray spaces must never reach the voice."""
+    for _ in range(3):  # also handles double-escaped text such as &amp;#x27;
+        new = html.unescape(text)
+        if new == text:
+            break
+        text = new
+    text = re.sub(r"[\u2019\u2018\u02bc\u0060\u00b4]", "'", text)
+    text = re.sub(r"\s*'\s*(?=[A-Za-zÀ-ÿ])", "'", text)  # no space around an elision: l'équipe
+    return re.sub(r"\s+", " ", text).strip()
+
+
 def synth(text: str, voice: str = config.VOICE_NAME, rate: float = config.SPEAKING_RATE) -> bytes:
     """Return raw 16-bit mono PCM for one sentence."""
     body = {
-        "input": {"text": text},
+        "input": {"text": clean_for_speech(text)},
         "voice": {"languageCode": config.VOICE_LANGUAGE, "name": voice},
         "audioConfig": {"audioEncoding": "LINEAR16", "sampleRateHertz": config.SAMPLE_RATE,
                         "speakingRate": rate},

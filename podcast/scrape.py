@@ -55,7 +55,12 @@ def _get(url: str) -> str:
 
 
 def _clean(text: str) -> str:
-    text = html.unescape(re.sub(r"<[^>]+>", " ", text or ""))
+    text = re.sub(r"<[^>]+>", " ", text or "")
+    for _ in range(3):  # some sources are escaped twice (&amp;#x27;)
+        new = html.unescape(text)
+        if new == text:
+            break
+        text = new
     return re.sub(r"\s+", " ", text).strip()
 
 

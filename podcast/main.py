@@ -195,6 +195,21 @@ def check(ep_id: str) -> int:
     return 0
 
 
+def rebuild_feed() -> int:
+    """Regenerate show notes, transcript pages and the feed from saved scripts. No audio, no upload."""
+    episodes = feed.load_episodes()
+    for ep in episodes:
+        path = config.SCRIPTS / f"{ep.get('id', ep['date'])}.json"
+        if path.exists():
+            script = json.loads(path.read_text())
+            ep["notes_html"] = feed.notes_html(script)
+            feed.write_transcript_page(ep, script)
+    feed.save_episodes(episodes)
+    feed.build_feed(episodes)
+    print(f"Rebuilt notes, transcripts and feed for {len(episodes)} episodes.")
+    return 0
+
+
 # ---------- half 2: audio, upload, feed ----------
 
 def publish_episode(ep_id: str, day: date, now: datetime, script: dict, articles: list[dict],
@@ -280,6 +295,7 @@ def main() -> int:
     ap.add_argument("--prepare", action="store_true", help="cloud routine: scrape and write the brief")
     ap.add_argument("--test", action="store_true", help="with --prepare: dry run that ignores used stories")
     ap.add_argument("--check", metavar="ID", help="validate scripts/ID.json")
+    ap.add_argument("--rebuild-feed", action="store_true", help="regenerate notes/transcripts/feed from saved scripts")
     ap.add_argument("--render", action="store_true", help="voice and publish every prepared script")
     ap.add_argument("--rerender", metavar="ID", help="re-record an existing episode's audio")
     args = ap.parse_args()
@@ -289,6 +305,8 @@ def main() -> int:
         return prepare(args.force, args.test)
     if args.check:
         return check(args.check)
+    if args.rebuild_feed:
+        return rebuild_feed()
     if args.render:
         return render_pending()
 

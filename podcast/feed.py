@@ -10,6 +10,12 @@ from xml.sax.saxutils import escape
 from . import config
 
 
+def esc(text: str) -> str:
+    """Escape for HTML text. Apostrophes and quotes stay as typed: html.escape() would turn
+    l'équipe into l&#x27;équipe, which podcast apps show as raw text."""
+    return html.escape(text, quote=False)
+
+
 def load_episodes() -> list[dict]:
     if config.EPISODES_JSON.exists():
         return json.loads(config.EPISODES_JSON.read_text())
@@ -25,16 +31,16 @@ def notes_html(script: dict) -> str:
     for seg in script["segments"]:
         if seg["kind"] == "vocabulary":
             continue
-        out.append(f"<h3>{html.escape(seg['heading'])}</h3>")
-        out += [f"<p>{html.escape(p)}</p>" for p in seg["paragraphs"]]
-    vocab = "".join(f"<li><b>{html.escape(v['french'])}</b> — {html.escape(v['english'])}</li>"
+        out.append(f"<h3>{esc(seg['heading'])}</h3>")
+        out += [f"<p>{esc(p)}</p>" for p in seg["paragraphs"]]
+    vocab = "".join(f"<li><b>{esc(v['french'])}</b> — {esc(v['english'])}</li>"
                     for v in script.get("vocabulary", []))
     if vocab:
         out.append(f"<h3>Les mots du jour</h3><ul>{vocab}</ul>")
     srcs = sorted({u for s in script["segments"] for u in s.get("source_urls", [])})
     if srcs:
         out.append("<h3>Sources (Radio-Canada Sports)</h3><ul>" +
-                   "".join(f'<li><a href="{html.escape(u)}">{html.escape(u)}</a></li>' for u in srcs) + "</ul>")
+                   "".join(f'<li><a href="{html.escape(u)}">{esc(u)}</a></li>' for u in srcs) + "</ul>")
     return "\n".join(out)
 
 
@@ -42,10 +48,10 @@ def write_transcript_page(ep: dict, script: dict) -> None:
     config.TRANSCRIPTS.mkdir(parents=True, exist_ok=True)
     page = f"""<!doctype html><html lang="fr"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>{html.escape(ep['title'])}</title>
+<title>{esc(ep['title'])}</title>
 <style>body{{font:18px/1.6 system-ui,sans-serif;max-width:42rem;margin:2rem auto;padding:0 1rem;color:#222;background:#fff}}
 @media (prefers-color-scheme:dark){{body{{color:#eee;background:#141414}}a{{color:#8cf}}}}audio{{width:100%}}</style>
-</head><body><h1>{html.escape(ep['title'])}</h1>
+</head><body><h1>{esc(ep['title'])}</h1>
 <audio controls preload="none" src="{html.escape(ep['audio_url'])}"></audio>
 {notes_html(script)}
 <p><a href="../index.html">← Tous les épisodes</a></p></body></html>"""
@@ -100,13 +106,13 @@ def build_feed(eps: list[dict]) -> None:
 """
     config.FEED_XML.write_text(xml)
 
-    rows = "".join(f'<li><a href="transcripts/{e.get("id", e["date"])}.html">{html.escape(e["title"])}</a> '
+    rows = "".join(f'<li><a href="transcripts/{e.get("id", e["date"])}.html">{esc(e["title"])}</a> '
                    f'<small>({round(e["duration_seconds"] / 60)} min)</small></li>' for e in eps)
     (config.DOCS / "index.html").write_text(f"""<!doctype html><html lang="fr"><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1"><title>{html.escape(config.SHOW_TITLE)}</title>
+<meta name="viewport" content="width=device-width, initial-scale=1"><title>{esc(config.SHOW_TITLE)}</title>
 <style>body{{font:18px/1.6 system-ui,sans-serif;max-width:42rem;margin:2rem auto;padding:0 1rem;color:#222;background:#fff}}
 @media (prefers-color-scheme:dark){{body{{color:#eee;background:#141414}}a{{color:#8cf}}}}img{{max-width:200px;border-radius:12px}}code{{word-break:break-all}}</style>
-</head><body><img src="cover.png" alt=""><h1>{html.escape(config.SHOW_TITLE)}</h1>
-<p>{html.escape(config.SHOW_DESCRIPTION)}</p>
+</head><body><img src="cover.png" alt=""><h1>{esc(config.SHOW_TITLE)}</h1>
+<p>{esc(config.SHOW_DESCRIPTION)}</p>
 <p>Abonnez-vous dans votre application de balados avec ce lien :<br><code>{config.SITE_URL}/feed.xml</code></p>
 <h2>Épisodes</h2><ul>{rows}</ul></body></html>""")
