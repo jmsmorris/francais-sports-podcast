@@ -21,6 +21,7 @@ import requests
 
 from . import config
 
+ELISION_MARK = "\u02bc"
 API = "https://texttospeech.googleapis.com/v1/text:synthesize"
 BYTES_PER_SEC = config.SAMPLE_RATE * 2  # 16-bit mono
 
@@ -38,7 +39,10 @@ def clean_for_speech(text: str) -> str:
             break
         text = new
     text = re.sub(r"[\u2019\u2018\u02bc\u0060\u00b4]", "'", text)
-    text = re.sub(r"\s*'\s*(?=[A-Za-zÀ-ÿ])", "'", text)  # no space around an elision: l'équipe
+    text = re.sub(r"(?<=[A-Za-zÀ-ÿ])\s*'\s*(?=[A-Za-zÀ-ÿ])", "'", text)  # no space in an elision: l'équipe
+    # The voice stumbles on the plain ASCII apostrophe in l'équipe / c'est; the look-alike letter U+02BC
+    # (modifier letter apostrophe) reads cleanly (chosen by ear, 2026-11-20). Text shown to people is unchanged.
+    text = re.sub(r"(?<=[A-Za-zÀ-ÿ])'(?=[A-Za-zÀ-ÿ])", ELISION_MARK, text)
     return re.sub(r"\s+", " ", text).strip()
 
 
