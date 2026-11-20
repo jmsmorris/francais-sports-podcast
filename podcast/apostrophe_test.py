@@ -20,8 +20,7 @@ SENTENCES = [
 IPA = {"c'est": "sɛ", "l'équipe": "lekip", "s'est": "sɛ", "qu'il": "kil", "n'est": "nɛ", "c'était": "setɛ",
        "l'épisode": "lepizɔd", "d'hier": "djɛʁ", "qu'elle": "kɛl"}
 CUSTOM = {"customPronunciations": {"pronunciations": [
-    {"phrase": ph if i == 0 else ph.capitalize(), "phoneticEncoding": "PHONETIC_ENCODING_IPA", "pronunciation": ipa}
-    for ph, ipa in IPA.items() for i in (0, 1)]}}
+    {"phrase": ph, "phoneticEncoding": "PHONETIC_ENCODING_IPA", "pronunciation": ipa} for ph, ipa in IPA.items()]}}
 RESPELL = {"c'est": "cè", "l'équipe": "léquipe", "s'est": "sè", "qu'il": "quil", "n'est": "nè", "c'était": "cétait",
            "l'épisode": "lépisode", "d'hier": "dhier", "qu'elle": "quelle"}
 
